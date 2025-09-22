@@ -1,110 +1,187 @@
-# PyTorch Lightning 训练模板
+# ChanLight
 
-- 此仓库提供了一个基于 PyTorch Lightning 的机器学习模型训练的结构化模板。旨在简化设置训练工作流、组织代码和管理配置的过程。
+基于 PyTorch Lightning 的机器学习训练 SDK，使用装饰器系统简化模型和数据集注册。
 
-# 目录结构
+## 特性
 
-```
-root/
-	├── data/
-	│   ├── __init__.py
-	│   ├── aug.py                  # 数据增强相关方法
-	│   ├── data_interface.py       # 数据集接口模板（一般不需要修改）
-	│   ├── your_data1.py           # 自定义数据集 1
-	│   ├── your_data2.py           # 自定义数据集 2
-	│   └── ...
-	├── model/
-	│   ├── __init__.py
-	│   ├── common.py               # 基础网络组件
-	│   ├── model_interface.py       # 模型接口模板（一般不需要修改）
-	│   ├── your_net1.py            # 自定义模型 1（必须包含模型定义和 common_step 方法）
-	│   ├── your_net2.py            # 自定义模型 2
-	│   └── ...
-	├── config.py                   # 配置文件
-	├── run_train.sh                # 训练脚本
-	├── train.py                    # 主训练文件
-	└── utils.py                    # 工具函数
-```
+- 🎯 **装饰器注册**: 使用 `@register_model` 和 `@register_dataset` 优雅地注册模型和数据集
+- ⚙️ **灵活配置**: 支持 JSON、YAML 和命令行参数配置
+- 🚀 **简化训练**: 几行代码即可开始训练
+- 📊 **丰富监控**: 内置 TensorBoard 日志和早停机制
+- 🔧 **易于扩展**: 支持自定义模型和数据集
 
 ## 快速开始
 
-### 1. 创建数据集
-- 在 `data` 文件夹中创建一个新的数据集文件，例如 `your_data1.py`。
-- 您可以选择继承 `torch.utils.data.Dataset`（例如在 `your_data1.py` 中），或创建 `torch.utils.data.TensorDataset`（例如在 `your_data2.py` 中）。
-- 确保数据集的名称与数据集对象名称一致，例如：`your_data1.py`的数据集对象必须是`YourData1`
+### 1. 安装
 
-### 2. 定义模型
-- 在 `model` 文件夹中创建一个新的模型文件，例如 `your_net1.py`。
-- 在此文件中实现模型架构。确保包含 `common_step` 方法，以计算损失并记录指标，以便进行反向传播。
-- 确保数模型的名称与模型对象名称一致，例如：`your_net.py`的模型对象必须是`YourNet`，并想必须包含`common_step`方法。
+```bash
+pip install -e .
+```
 
-### 3. 配置参数
-- 编辑 `config.py` 文件以设置模型参数和数据集配置。通过这种方式可以更容易地管理和调整训练过程中的参数。
-
-### 4. 运行训练
-- 使用提供的 `run_train.sh` 脚本来启动训练过程。此脚本将设置环境并执行训练文件。
-
-
-### 数据集示例（`your_data1.py`）
+### 2. 定义模型和数据集
 
 ```python
 import torch
+import torch.nn as nn
+from torch.nn import functional as F
 from torch.utils.data import Dataset
+from chanlight import register_model, register_dataset, TrainerConfig, TrainingManager
 
-class YourDataset(Dataset):
-    def __init__(self, data_path):
-        # 加载您的数据
-        self.data = ...
+# 注册模型
+@register_model("my_model")
+class MyModel(nn.Module):
+    def __init__(self, input_size=1024, output_size=1):
+        super().__init__()
+        self.linear = nn.Linear(input_size, output_size)
+    
+    def forward(self, x):
+        return torch.sigmoid(self.linear(x))
+    
+    @staticmethod
+    def common_step(model, batch, log, hparams, mode='train'):
+        inputs, labels = batch
+        outputs = model(inputs)
+        loss = F.binary_cross_entropy(outputs.squeeze(), labels.float())
+        log(f'{mode}_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
+        return loss
+
+# 注册数据集
+@register_dataset("my_dataset")
+class MyDataset(Dataset):
+    def __init__(self, size=1000, input_dim=1024):
+        self.data = torch.randn(size, input_dim)
+        self.labels = torch.randint(0, 2, (size,))
     
     def __len__(self):
         return len(self.data)
-
+    
     def __getitem__(self, idx):
-        # 返回单个数据点
-        return self.data[idx]
+        return self.data[idx], self.labels[idx]
 ```
 
-### 模型示例（`your_net1.py`）
+### 3. 开始训练
 
 ```python
-from torch import nn
-from torch.nn import functional as F
-from config import TrainerSettings
+# 创建配置
+config = TrainerConfig(
+    model_name='my_model',      # 使用注册的模型名
+    dataset_name='my_dataset',  # 使用注册的数据集名
+    epochs=10,
+    batch_size=32,
+    lr=0.001,
+    # 模型参数
+    model_kwargs={
+        'input_size': 1024,
+        'output_size': 1
+    },
+    # 数据集参数
+    data_kwargs={
+        'size': 1000,
+        'input_dim': 1024
+    }
+)
 
-# 你的模型
-class YourNet(nn.Module):
-    def __init__(self, in_features=1024, out_features=1, hid_features=128):
-        super().__init__()
-        self.fc = nn.Sequential(
-            nn.Linear(in_features, hid_features),
-            nn.ReLU(inplace=True),
-            nn.Linear(hid_features, out_features),
-            nn.Sigmoid()
-        )
+# 创建训练管理器
+manager = TrainingManager(config)
+manager.setup()
 
-    def forward(self, x):
-        x = self.fc(x)
-        return x
-
-
-def common_step(model, batch, log, hparams: TrainerSettings, mode: str='train'):
-    """
-    这里写推理代码
-    """
-    # 提取数据
-    img, labels = batch
-    out = model(img)
-
-    # 计算loss
-    loss = F.binary_cross_entropy_with_logits(out, labels)    
-    # 计算acc
-    acc = (out > 0.5).eq(labels).float().mean()
-
-    # 记录到tensorboard
-    log(f'{mode}_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
-    # 记录到tensorboard
-    log(f'{mode}_acc', acc, on_step=False, on_epoch=True, prog_bar=True)
-
-    # 返回loss
-    return loss
+# 开始训练
+results = manager.train()
+print(f"训练完成! 最佳模型: {results['best_model_path']}")
 ```
+
+## 装饰器系统
+
+### 模型注册
+
+```python
+# 手动指定名称
+@register_model("model_name", input_size=1024, hidden_size=256)
+class MyModel(nn.Module):
+    # 模型定义
+    pass
+
+# 手动指定名称
+@register_model("my_model", input_size=512)
+class SimpleModel(nn.Module):
+    # 模型定义
+    pass
+```
+
+### 数据集注册
+
+```python
+# 手动指定名称
+@register_dataset("dataset_name", batch_size=32)
+class MyDataset(Dataset):
+    # 数据集定义
+    pass
+
+# 手动指定名称
+@register_dataset("my_dataset", batch_size=16)
+class SimpleDataset(Dataset):
+    # 数据集定义
+    pass
+```
+
+## 配置选项
+
+```python
+config = TrainerConfig(
+    # 基础参数
+    epochs=50,
+    batch_size=32,
+    lr=0.001,
+    
+    # 优化器
+    optimizer='adam',
+    weight_decay=1e-5,
+    lr_scheduler='cosine',
+    
+    # 监控
+    use_early_stopping=True,
+    early_stopping_patience=10,
+    use_swa=True,
+    
+    # 设备
+    device='auto',
+    precision='32'
+)
+```
+
+## 示例
+
+查看 `examples/` 目录中的完整示例：
+
+- `decorator_example.py` - 完整装饰器使用示例
+- `simple_decorator_example.py` - 简单使用示例
+- `decorator_guide.md` - 详细使用指南
+
+## 目录结构
+
+```
+chanlight/
+├── __init__.py
+├── decorators.py          # 装饰器系统
+├── core/                  # 核心模块
+│   ├── config.py         # 配置管理
+│   └── trainer.py        # 训练器封装
+├── models/               # 模型管理
+│   └── interface.py      # 模型接口 (ModelInterface)
+├── data/                 # 数据管理
+│   └── interface.py      # 数据接口
+├── training/             # 训练管理
+│   └── manager.py        # 训练管理器
+└── utils/                # 工具模块
+    ├── logger.py         # 日志工具
+    └── helpers.py        # 辅助函数
+
+examples/                 # 示例代码
+├── decorator_example.py
+├── simple_decorator_example.py
+└── decorator_guide.md
+```
+
+## 许可证
+
+MIT License
