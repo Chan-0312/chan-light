@@ -35,15 +35,15 @@ class ModelInterface(pl.LightningModule):
     
     def training_step(self, batch, batch_idx):
         """训练步骤"""
-        return self.common_step(self.model, batch, self.log, self.hparams, mode='train')
+        return self.common_step(self.model, batch, self.log, self.hparams, stage='train')
     
     def validation_step(self, batch, batch_idx):
         """验证步骤"""
-        return self.common_step(self.model, batch, self.log, self.hparams, mode='val')
+        return self.common_step(self.model, batch, self.log, self.hparams, stage='val')
     
     def test_step(self, batch, batch_idx):
         """测试步骤"""
-        return self.common_step(self.model, batch, self.log, self.hparams, mode='test')
+        return self.common_step(self.model, batch, self.log, self.hparams, stage='test')
     
     def configure_optimizers(self):
         """配置优化器和学习率调度器"""

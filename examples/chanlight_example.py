@@ -38,7 +38,7 @@ class MyCNN(nn.Module):
         return x
     
     @staticmethod
-    def common_step(model, batch, log, hparams, mode='train'):
+    def common_step(model, batch, log, hparams, stage='train'):
         """训练步骤函数"""
         inputs, labels = batch
         outputs = model(inputs)
@@ -46,8 +46,8 @@ class MyCNN(nn.Module):
         loss = F.binary_cross_entropy(outputs.squeeze(), labels.float())
         accuracy = ((outputs.squeeze() > 0.5).float() == labels.float()).float().mean()
         
-        log(f'{mode}_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
-        log(f'{mode}_acc', accuracy, on_step=False, on_epoch=True, prog_bar=True)
+        log(f'{stage}_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
+        log(f'{stage}_acc', accuracy, on_step=False, on_epoch=True, prog_bar=True)
         
         return loss
 
@@ -58,10 +58,10 @@ class MyCNN(nn.Module):
 class MyDataset(Dataset):
     """使用装饰器注册的数据集"""
     
-    def __init__(self, data_size=1000, input_dim=1024, train=True):
+    def __init__(self, data_size=1000, input_dim=1024, stage='train'):
         self.data_size = data_size
         self.input_dim = input_dim
-        self.train = train
+        self.stage = stage
         
         # 生成模拟数据
         self.data = torch.randn(data_size, input_dim)

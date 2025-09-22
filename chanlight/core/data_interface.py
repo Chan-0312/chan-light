@@ -29,12 +29,12 @@ class DataInterface(pl.LightningDataModule):
         """设置数据集"""
         # 为训练和验证分配数据集
         if stage == 'fit' or stage is None:
-            self.trainset = self.instancialize(train=True)
-            self.valset = self.instancialize(train=False)
+            self.trainset = self.instancialize(stage='train')
+            self.valset = self.instancialize(stage='val')
 
         # 为测试分配数据集
         if stage == 'test' or stage is None:
-            self.testset = self.instancialize(train=False)
+            self.testset = self.instancialize(stage='test')
     
     def train_dataloader(self) -> DataLoader:
         """训练数据加载器"""
