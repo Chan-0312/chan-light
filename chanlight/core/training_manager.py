@@ -22,12 +22,12 @@ class TrainingManager:
         self.model = None
         self.data_module = None
         
-    def setup_model(self, model_name: str = None, **model_kwargs):
+    def setup_model(self, model_name: str = None, model_kwargs: Dict[str, Any] = None):
         """设置模型
         
         Args:
             model_name: 模型名称
-            **model_kwargs: 模型参数
+            model_kwargs: 模型参数
         """
         if model_name is None:
             model_name = self.config.model_name
@@ -46,13 +46,12 @@ class TrainingManager:
         model_signature = inspect.signature(model_class.__init__)
         model_params = set(model_signature.parameters.keys()) - {'self'}
         
-        # 构建模型参数：优先级 model_kwargs > config
+        # 构建模型参数：只从 model_kwargs 中获取
         final_kwargs = {}
-        for param in model_params:
-            if param in model_kwargs:
-                final_kwargs[param] = model_kwargs[param]
-            elif param in self.config.dict():
-                final_kwargs[param] = self.config.dict()[param]
+        if model_kwargs:
+            for param in model_params:
+                if param in model_kwargs:
+                    final_kwargs[param] = model_kwargs[param]
         
         model_instance = model_class(**final_kwargs)
         
@@ -65,7 +64,7 @@ class TrainingManager:
         
         return self.model
     
-    def setup_data(self, dataset_name: str = None, **data_kwargs) -> DataInterface:
+    def setup_data(self, dataset_name: str = None, data_kwargs: Dict[str, Any] = None) -> DataInterface:
         """设置数据模块"""
         if dataset_name is None:
             dataset_name = self.config.dataset_name
@@ -78,22 +77,17 @@ class TrainingManager:
         # 使用装饰器注册的数据集
         dataset_class = registered_dataset['dataset_class']
         
-        # 只传递DataInterface需要的参数
-        import inspect
-        data_interface_signature = inspect.signature(DataInterface.__init__)
-        data_interface_params = set(data_interface_signature.parameters.keys()) - {'self'}
+        # 构建DataInterface参数
+        final_kwargs = {
+            'dataset_class': dataset_class,
+            'dataset_name': dataset_name,
+            'num_workers': self.config.num_workers,
+            'batch_size': self.config.batch_size,
+        }
         
-        # 构建DataInterface参数：优先级 data_kwargs > config
-        final_kwargs = {}
-        for param in data_interface_params:
-            if param in data_kwargs:
-                final_kwargs[param] = data_kwargs[param]
-            elif param in self.config.dict():
-                final_kwargs[param] = self.config.dict()[param]
-        
-        # 添加数据集类
-        final_kwargs['dataset_class'] = dataset_class
-        final_kwargs['dataset_name'] = dataset_name
+        # 添加 data_kwargs 中的参数（如果提供）
+        if data_kwargs:
+            final_kwargs.update(data_kwargs)
         
         # 创建数据模块实例
         self.data_module = DataInterface(**final_kwargs)
@@ -114,8 +108,8 @@ class TrainingManager:
         final_model_kwargs = {**self.config.model_kwargs, **(model_kwargs or {})}
         final_data_kwargs = {**self.config.data_kwargs, **(data_kwargs or {})}
         
-        self.setup_model(model_name, **final_model_kwargs)
-        self.setup_data(dataset_name, **final_data_kwargs)
+        self.setup_model(model_name, final_model_kwargs)
+        self.setup_data(dataset_name, final_data_kwargs)
         
         # 设置训练器
         self.trainer.setup(self.model, self.data_module)
