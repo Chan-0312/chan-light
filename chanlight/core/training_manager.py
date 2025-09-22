@@ -40,20 +40,17 @@ class TrainingManager:
         # 使用装饰器注册的模型
         model_class = registered_model['model_class']
         common_step = registered_model['common_step']
-        default_kwargs = registered_model['kwargs']
         
         # 只传递模型需要的参数
         import inspect
         model_signature = inspect.signature(model_class.__init__)
         model_params = set(model_signature.parameters.keys()) - {'self'}
         
-        # 构建模型参数：优先级 model_kwargs > default_kwargs > config
+        # 构建模型参数：优先级 model_kwargs > config
         final_kwargs = {}
         for param in model_params:
             if param in model_kwargs:
                 final_kwargs[param] = model_kwargs[param]
-            elif param in default_kwargs:
-                final_kwargs[param] = default_kwargs[param]
             elif param in self.config.dict():
                 final_kwargs[param] = self.config.dict()[param]
         
@@ -80,20 +77,17 @@ class TrainingManager:
         
         # 使用装饰器注册的数据集
         dataset_class = registered_dataset['dataset_class']
-        default_kwargs = registered_dataset['kwargs']
         
         # 只传递DataInterface需要的参数
         import inspect
         data_interface_signature = inspect.signature(DataInterface.__init__)
         data_interface_params = set(data_interface_signature.parameters.keys()) - {'self'}
         
-        # 构建DataInterface参数：优先级 data_kwargs > default_kwargs > config
+        # 构建DataInterface参数：优先级 data_kwargs > config
         final_kwargs = {}
         for param in data_interface_params:
             if param in data_kwargs:
                 final_kwargs[param] = data_kwargs[param]
-            elif param in default_kwargs:
-                final_kwargs[param] = default_kwargs[param]
             elif param in self.config.dict():
                 final_kwargs[param] = self.config.dict()[param]
         

@@ -3,7 +3,6 @@
 """
 
 import inspect
-import importlib
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from typing import Dict, Any, Optional
@@ -65,21 +64,12 @@ class DataInterface(pl.LightningDataModule):
         )
 
     def load_data_module(self):
-        """动态加载数据模块"""
+        """加载数据模块"""
         if self.dataset_class is not None:
             # 使用装饰器注册的数据集类
             self.data_module = self.dataset_class
         else:
-            # 传统方式：从模块加载
-            name = self.dataset
-            # 将 snake_case.py 文件名转换为 CamelCase 类名
-            camel_name = ''.join([i.capitalize() for i in name.split('_')])
-            try:
-                self.data_module = getattr(importlib.import_module(
-                    '.'+name, package=__package__), camel_name)
-            except Exception as e:
-                raise ValueError(
-                    f'无法加载数据集模块 data.{name}.{camel_name}: {str(e)}')
+            raise ValueError("数据集类未提供。请使用装饰器注册数据集。")
 
     def instancialize(self, **other_args):
         """使用配置参数实例化数据集"""

@@ -95,7 +95,17 @@ def main():
         dataset_name='my_dataset',  # 使用注册的数据集名
         epochs=3,
         batch_size=32,
-        lr=0.001
+        lr=0.001,
+        model_kwargs={
+            'input_size': 1024,
+            'hidden_size': 256,
+            'num_classes': 1,
+            'dropout_rate': 0.3
+        },
+        data_kwargs={
+            'data_size': 1000,
+            'input_dim': 1024
+        }
     )
     
     print("配置信息:")

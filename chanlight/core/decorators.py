@@ -13,19 +13,17 @@ class Registry:
         self._models: Dict[str, Dict[str, Any]] = {}
         self._datasets: Dict[str, Dict[str, Any]] = {}
     
-    def register_model(self, name: str, model_class: Type, common_step: Callable, **kwargs):
+    def register_model(self, name: str, model_class: Type, common_step: Callable):
         """注册模型"""
         self._models[name] = {
             'model_class': model_class,
-            'common_step': common_step,
-            'kwargs': kwargs
+            'common_step': common_step
         }
     
-    def register_dataset(self, name: str, dataset_class: Type, **kwargs):
+    def register_dataset(self, name: str, dataset_class: Type):
         """注册数据集"""
         self._datasets[name] = {
-            'dataset_class': dataset_class,
-            'kwargs': kwargs
+            'dataset_class': dataset_class
         }
     
     def get_model(self, name: str) -> Optional[Dict[str, Any]]:
@@ -49,13 +47,12 @@ class Registry:
 registry = Registry()
 
 
-def register_model(name: str, **model_kwargs):
+def register_model(name: str):
     """
     模型注册装饰器
     
     Args:
         name: 模型名称
-        **model_kwargs: 模型默认参数
     """
     def decorator(model_class):
         # 获取common_step函数
@@ -64,7 +61,7 @@ def register_model(name: str, **model_kwargs):
             raise ValueError(f"模型 {name} 必须定义 common_step 方法")
         
         # 注册模型
-        registry.register_model(name, model_class, common_step, **model_kwargs)
+        registry.register_model(name, model_class, common_step)
         
         # 添加注册信息到模型类
         model_class._chanlight_name = name
@@ -75,17 +72,16 @@ def register_model(name: str, **model_kwargs):
     return decorator
 
 
-def register_dataset(name: str, **dataset_kwargs):
+def register_dataset(name: str):
     """
     数据集注册装饰器
     
     Args:
         name: 数据集名称
-        **dataset_kwargs: 数据集默认参数
     """
     def decorator(dataset_class):
         # 注册数据集
-        registry.register_dataset(name, dataset_class, **dataset_kwargs)
+        registry.register_dataset(name, dataset_class)
         
         # 添加注册信息到数据集类
         dataset_class._chanlight_name = name

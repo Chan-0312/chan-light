@@ -96,13 +96,13 @@ print(f"训练完成! 最佳模型: {results['best_model_path']}")
 
 ```python
 # 手动指定名称
-@register_model("model_name", input_size=1024, hidden_size=256)
+@register_model("model_name")
 class MyModel(nn.Module):
     # 模型定义
     pass
 
 # 手动指定名称
-@register_model("my_model", input_size=512)
+@register_model("my_model")
 class SimpleModel(nn.Module):
     # 模型定义
     pass
@@ -112,13 +112,13 @@ class SimpleModel(nn.Module):
 
 ```python
 # 手动指定名称
-@register_dataset("dataset_name", batch_size=32)
+@register_dataset("dataset_name")
 class MyDataset(Dataset):
     # 数据集定义
     pass
 
 # 手动指定名称
-@register_dataset("my_dataset", batch_size=16)
+@register_dataset("my_dataset")
 class SimpleDataset(Dataset):
     # 数据集定义
     pass
