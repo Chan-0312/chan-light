@@ -15,7 +15,7 @@ from chanlight import (
 )
 
 
-# 方法1: 使用 @register_model 装饰器
+# 使用 @register_model 装饰器
 @register_model("my_cnn", input_size=1024, hidden_size=256)
 class MyCNN(nn.Module):
     """使用装饰器注册的CNN模型"""
@@ -52,34 +52,8 @@ class MyCNN(nn.Module):
         return loss
 
 
-# 方法2: 使用 @register_model 装饰器（手动指定名称）
-@register_model("simple_model", input_size=512, hidden_size=128)
-class SimpleModel(nn.Module):
-    """手动注册的简单模型"""
-    
-    def __init__(self, input_size=512, hidden_size=128, output_size=1):
-        super().__init__()
-        self.linear1 = nn.Linear(input_size, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, output_size)
-        
-    def forward(self, x):
-        x = F.relu(self.linear1(x))
-        x = torch.sigmoid(self.linear2(x))
-        return x
-    
-    @staticmethod
-    def common_step(model, batch, log, hparams, mode='train'):
-        """训练步骤函数"""
-        inputs, labels = batch
-        outputs = model(inputs)
-        
-        loss = F.binary_cross_entropy(outputs.squeeze(), labels.float())
-        log(f'{mode}_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
-        
-        return loss
 
-
-# 方法3: 注册数据集
+# 注册数据集
 @register_dataset("my_dataset", batch_size=32, shuffle=True)
 class MyDataset(Dataset):
     """使用装饰器注册的数据集"""
@@ -99,22 +73,6 @@ class MyDataset(Dataset):
     def __getitem__(self, idx):
         return self.data[idx], self.labels[idx]
 
-
-# 方法4: 手动注册数据集
-@register_dataset("simple_dataset", batch_size=16)
-class SimpleDataset(Dataset):
-    """手动注册的简单数据集"""
-    
-    def __init__(self, size=500, dim=512):
-        self.size = size
-        self.data = torch.randn(size, dim)
-        self.labels = torch.randint(0, 2, (size,))
-        
-    def __len__(self):
-        return self.size
-    
-    def __getitem__(self, idx):
-        return self.data[idx], self.labels[idx]
 
 
 def main():
