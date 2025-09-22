@@ -16,7 +16,7 @@ from chanlight import (
 
 
 # 使用 @register_model 装饰器
-@register_model("my_cnn", input_size=1024, hidden_size=256)
+@register_model("my_cnn")
 class MyCNN(nn.Module):
     """使用装饰器注册的CNN模型"""
     
@@ -54,7 +54,7 @@ class MyCNN(nn.Module):
 
 
 # 注册数据集
-@register_dataset("my_dataset", batch_size=32, shuffle=True)
+@register_dataset("my_dataset")
 class MyDataset(Dataset):
     """使用装饰器注册的数据集"""
     
