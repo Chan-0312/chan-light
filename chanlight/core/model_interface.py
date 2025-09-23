@@ -124,7 +124,5 @@ class ModelInterface(pl.LightningModule):
         """获取模型信息"""
         return {
             "model_name": self.model.__class__.__name__ if self.model else "Unknown",
-            "total_params": sum(p.numel() for p in self.model.parameters()) if self.model else 0,
-            "trainable_params": sum(p.numel() for p in self.model.parameters() if p.requires_grad) if self.model else 0,
             "model_kwargs": self.hparams.model_kwargs
         }

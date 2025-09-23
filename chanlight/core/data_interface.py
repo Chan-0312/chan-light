@@ -86,7 +86,4 @@ class DataInterface(pl.LightningDataModule):
         return {
             "dataset_name": self.dataset_class.__name__ if self.dataset_class else "Unknown",
             "data_kwargs": self.data_kwargs,
-            "train_size": len(self.trainset) if hasattr(self, 'trainset') else 0,
-            "val_size": len(self.valset) if hasattr(self, 'valset') else 0,
-            "test_size": len(self.testset) if hasattr(self, 'testset') else 0
         }
