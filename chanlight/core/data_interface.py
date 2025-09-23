@@ -11,19 +11,26 @@ from typing import Dict, Any, Optional
 class DataInterface(pl.LightningDataModule):
     """数据接口类，支持动态加载数据集"""
 
-    def __init__(self, 
-                 dataset_class=None,
+    def __init__(self,
+                 dataset_class,
+                 data_kwargs: Dict[str, Any] = {},
                  num_workers: int = 8,
-                 dataset_name: str = '',
                  batch_size: int = 32,
                  **kwargs):
+        """初始化数据接口
+        
+        Args:
+            dataset_class: 数据集类
+            num_workers: 数据加载器的工作进程数
+            batch_size: 批次大小
+            **kwargs: 其他参数，会传递给数据集类的构造函数
+        """
         super().__init__()
         self.num_workers = num_workers
-        self.dataset = dataset_name
         self.batch_size = batch_size
-        self.kwargs = kwargs
+        self.data_kwargs = data_kwargs
         self.dataset_class = dataset_class
-        self.load_data_module()
+        self.data_module = dataset_class
 
     def setup(self, stage: Optional[str] = None):
         """设置数据集"""
@@ -63,31 +70,22 @@ class DataInterface(pl.LightningDataModule):
             shuffle=False
         )
 
-    def load_data_module(self):
-        """加载数据模块"""
-        if self.dataset_class is not None:
-            # 使用装饰器注册的数据集类
-            self.data_module = self.dataset_class
-        else:
-            raise ValueError("数据集类未提供。请使用装饰器注册数据集。")
-
     def instancialize(self, **other_args):
         """使用配置参数实例化数据集"""
         class_args = list(inspect.signature(self.data_module).parameters.keys())
-        inkeys = self.kwargs.keys()
+        inkeys = self.data_kwargs.keys()
         args1 = {}
         for arg in class_args:
             if arg in inkeys:
-                args1[arg] = self.kwargs[arg]
+                args1[arg] = self.data_kwargs[arg]
         args1.update(other_args)
         return self.data_module(**args1)
     
     def get_dataset_info(self) -> Dict[str, Any]:
         """获取数据集信息"""
         return {
-            "dataset_name": self.dataset,
-            "batch_size": self.batch_size,
-            "num_workers": self.num_workers,
+            "dataset_name": self.dataset_class.__name__ if self.dataset_class else "Unknown",
+            "data_kwargs": self.data_kwargs,
             "train_size": len(self.trainset) if hasattr(self, 'trainset') else 0,
             "val_size": len(self.valset) if hasattr(self, 'valset') else 0,
             "test_size": len(self.testset) if hasattr(self, 'testset') else 0

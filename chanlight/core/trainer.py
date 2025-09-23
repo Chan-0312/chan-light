@@ -71,10 +71,37 @@ class PLTrainer:
     
     def _create_logger(self) -> TensorBoardLogger:
         """创建日志记录器"""
+        # 从 model_or_path 中提取模型名称
+        model_name = self._extract_model_name(self.config.model_or_path)
         return TensorBoardLogger(
             save_dir=self.config.log_dir,
-            name=self.config.model_name
+            name=model_name
         )
+    
+    def _extract_model_name(self, model_or_path) -> str:
+        """从模型路径或名称中提取模型名称"""
+        if not model_or_path:
+            return "unknown_model"
+        
+        # 如果是类对象，使用类名
+        if isinstance(model_or_path, type):
+            return model_or_path.__name__
+        
+        # 如果是字符串
+        if isinstance(model_or_path, str):
+            # 如果是文件路径，从文件名提取
+            if '/' in model_or_path or '\\' in model_or_path or model_or_path.endswith('.py'):
+                from pathlib import Path
+                # 去掉路径和扩展名，只保留文件名
+                filename = Path(model_or_path).stem
+                # 将 snake_case 转换为 CamelCase 作为模型名
+                return ''.join([i.capitalize() for i in filename.split('_')])
+            
+            # 如果直接是模型名称，直接返回
+            return model_or_path
+        
+        # 其他情况，尝试获取名称
+        return getattr(model_or_path, '__name__', str(model_or_path))
     
     def _create_trainer(self) -> Trainer:
         """创建PyTorch Lightning训练器"""

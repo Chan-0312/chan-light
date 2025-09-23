@@ -3,7 +3,7 @@
 """
 
 from pydantic_settings import BaseSettings
-from typing import Literal, Optional, Dict, Any
+from typing import Literal, Optional, Dict, Any, Union, Type
 from pathlib import Path
 
 
@@ -31,11 +31,11 @@ class TrainerConfig(BaseSettings):
     lr: float = 1e-3
     """学习率，控制参数更新的步长。过大会导致训练不稳定，过小会收敛缓慢"""
     
-    model_name: str = ''
-    """模型名称，用于标识和注册模型。如果使用装饰器注册模型，这里填写注册的名称"""
+    model_or_path: Union[str, Type] = ''
+    """模型类或模型文件路径。可以是模型类（直接传入）或模型文件路径（字符串）"""
     
-    dataset_name: str = ''
-    """数据集名称，用于标识和注册数据集。如果使用装饰器注册数据集，这里填写注册的名称"""
+    dataset_or_path: Union[str, Type] = ''
+    """数据集类或数据集文件路径。可以是数据集类（直接传入）或数据集文件路径（字符串）"""
     
     # ==================== 模型和数据集参数 ====================
     model_kwargs: Dict[str, Any] = {}

@@ -2,16 +2,12 @@
 核心模块 - 配置管理和训练器
 """
 
-from .config import TrainerConfig
-from .trainer import PLTrainer
-from .model_interface import ModelInterface
-from .data_interface import DataInterface
-from .training_manager import TrainingManager
-from .decorators import (
-    register_model,
-    register_dataset,
-    get_registry
-)
+from chanlight.core.config import TrainerConfig
+from chanlight.core.trainer import PLTrainer
+from chanlight.core.model_interface import ModelInterface
+from chanlight.core.data_interface import DataInterface
+from chanlight.core.training_manager import TrainingManager
+
 
 __all__ = [
     'TrainerConfig',
@@ -19,7 +15,4 @@ __all__ = [
     'ModelInterface',
     'DataInterface',
     'TrainingManager',
-    'register_model',
-    'register_dataset',
-    'get_registry'
 ]
