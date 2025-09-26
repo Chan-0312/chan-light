@@ -5,7 +5,11 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-from typing import Callable, Optional, Any, Dict
+from typing import Callable, Optional, Any, Dict, Tuple, Type
+from pathlib import Path
+import importlib.util
+import sys
+from chanlight.core.config import TrainerConfig
 
 
 class ModelInterface(pl.LightningModule):
@@ -126,3 +130,174 @@ class ModelInterface(pl.LightningModule):
             "model_name": self.model.__class__.__name__ if self.model else "Unknown",
             "model_kwargs": self.hparams.model_kwargs
         }
+
+
+
+def setup_model_interface(model_or_path, model_kwargs: Dict[str, Any] = None, 
+               common_step:Callable=None, config: TrainerConfig = None) -> ModelInterface:
+    """设置模型
+    
+    Args:
+        model_or_path: 模型类（直接传入）或模型文件路径（字符串）
+        model_kwargs: 模型参数
+        common_step: 通用步骤函数
+        config: 训练配置
+        
+    Returns:
+        ModelInterface: 模型接口实例
+    """
+    if model_or_path is None:
+        model_or_path = config.model_or_path
+    
+    # 判断 model_or_path 是模型类还是文件路径字符串
+    if isinstance(model_or_path, type) or callable(model_or_path):
+        # 方式1：直接传入模型类
+        model_class = model_or_path
+        if common_step is None:
+            raise ValueError("直接传入模型类时，必须同时提供 common_step 函数")
+    else:
+        # 方式2：字符串路径，从文件导入模型
+        model_class, common_step = _import_model_from_file(model_or_path)
+    
+    # 创建模型接口实例
+    config_dict = config.dict()
+    config_dict['model_kwargs'] = model_kwargs  # 确保使用正确的 model_kwargs
+    return ModelInterface(
+        model_class=model_class,
+        common_step=common_step,
+        **config_dict
+    )
+
+def _import_model_from_file(file_path) -> Tuple[Type, Callable]:
+    """从文件路径导入模型
+    
+    Args:
+        file_path: 模型文件路径
+        
+    Returns:
+        tuple: (model_class, common_step)
+    """
+    # 处理文件路径
+    file_path = Path(file_path)
+    if not file_path.exists():
+        # 尝试添加 .py 扩展名
+        py_path = file_path.with_suffix('.py')
+        if py_path.exists():
+            file_path = py_path
+        else:
+            raise FileNotFoundError(f"文件不存在: {file_path}")
+    
+    # 动态导入模块
+    spec = importlib.util.spec_from_file_location("model_module", file_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["model_module"] = module
+    spec.loader.exec_module(module)
+    
+    # 基于文件名推导类名：snake_case.py -> CamelCase
+    file_name = file_path.stem
+    camel_name = ''.join([i.capitalize() for i in file_name.split('_')])
+    
+    try:
+        model_class = getattr(module, camel_name)
+        if not (isinstance(model_class, type) and 
+                hasattr(model_class, '__init__') and 
+                hasattr(model_class, 'forward')):
+            model_class = None
+            raise AttributeError(f"类 {camel_name} 不是有效的模型类")
+    except (AttributeError, ValueError):
+        # 如果基于文件名推导失败，直接抛出错误
+        raise ValueError(f"在文件 {file_path} 中未找到模型类。\n"
+                         f"请确保文件包含模型类，并按照约定命名：\n"
+                         f"- 文件名：snake_case.py\n"
+                         f"- 类名：{camel_name}")
+    
+    # 查找 common_step 函数
+    common_step = None
+    for attr_name in dir(module):
+        attr = getattr(module, attr_name)
+        if callable(attr) and attr_name == 'common_step':
+            common_step = attr
+            break
+    
+    if not common_step:
+        raise ValueError(f"在文件 {file_path} 中未找到 common_step 函数")
+    
+    return model_class, common_step
+
+def _import_model_from_file(file_path) -> Tuple[Type, Callable]:
+    """从文件路径导入模型
+    
+    Args:
+        file_path: 模型文件路径
+        
+    Returns:
+        tuple: (model_class, common_step)
+    """
+    # 如果是相对路径，转换为绝对路径
+    file_path = Path(file_path).resolve()
+    
+    # 如果文件不存在且没有 .py 扩展名，尝试添加 .py 扩展名
+    if not file_path.exists() and file_path.suffix != '.py':
+        py_file_path = file_path.with_suffix('.py')
+        if py_file_path.exists():
+            file_path = py_file_path
+    
+    if not file_path.exists():
+        raise FileNotFoundError(f"文件不存在: {file_path}")
+    
+    if file_path.suffix != '.py':
+        raise ValueError(f"文件必须是 .py 文件: {file_path}")
+    
+    # 动态导入模块
+    spec = importlib.util.spec_from_file_location(file_path.stem, file_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"无法加载模块: {file_path}")
+    
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[file_path.stem] = module
+    spec.loader.exec_module(module)
+    
+    # 方式1：基于文件名推导类名（推荐方式）
+    model_class = None
+    common_step = None
+    
+    # 从文件名推导类名：snake_case.py -> CamelCase
+    file_name = file_path.stem  # 去掉 .py 扩展名
+    camel_name = ''.join([i.capitalize() for i in file_name.split('_')])
+
+    try:
+        # 尝试获取推导出的类名
+        model_class = getattr(module, camel_name)
+        if not (isinstance(model_class, type) and 
+                hasattr(model_class, '__init__') and 
+                hasattr(model_class, 'forward')):
+            model_class = None
+            raise AttributeError(f"类 {camel_name} 不是有效的模型类")
+        
+    except (AttributeError, ValueError):
+        # 如果基于文件名推导失败，直接抛出错误
+        raise ValueError(f"在文件 {file_path} 中未找到模型类。\n"
+                        f"请确保文件包含模型类，并按照约定命名：\n"
+                        f"- 文件名：snake_case.py\n"
+                        f"- 类名：{camel_name}")
+    
+    # 查找 common_step 函数
+    if hasattr(model_class, 'common_step') and callable(model_class.common_step):
+        common_step = model_class.common_step
+    else:
+        # 尝试获取独立的 common_step 函数
+        try:
+            common_step = getattr(module, 'common_step')
+        except AttributeError:
+            # 最后尝试模糊匹配包含 common_step 的函数
+            for attr_name in dir(module):
+                attr = getattr(module, attr_name)
+                if (callable(attr) and 
+                    attr_name.lower().find('common_step') != -1):
+                    common_step = attr
+                    break
+    
+    if not common_step:
+        raise ValueError(f"在文件 {file_path} 中未找到 common_step 函数")
+    
+    return model_class, common_step

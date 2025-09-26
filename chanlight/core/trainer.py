@@ -4,11 +4,13 @@ PyTorch Lightning 训练器封装
 
 import os
 import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 import pytorch_lightning.callbacks as plc
 from pytorch_lightning.loggers import TensorBoardLogger
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from pathlib import Path
 
 from chanlight.core.config import TrainerConfig
@@ -169,26 +171,34 @@ class PLTrainer:
         
         return results[0] if results else {}
     
-    def predict(self, dataloader, ckpt_path: Optional[str] = None) -> List[Any]:
-        """预测"""
-        if self.trainer is None:
-            self.trainer = self._create_trainer()
-        
-        if ckpt_path is None:
-            ckpt_path = self.trainer.checkpoint_callback.best_model_path
-        
-        predictions = self.trainer.predict(
-            self.model,
-            dataloaders=dataloader,
-            ckpt_path=ckpt_path
-        )
-        
-        return predictions
-    
-    def get_model(self) -> pl.LightningModule:
-        """获取模型"""
+    def get_model_module(self) -> pl.LightningModule:
+        """获取模型模块"""
+        if self.model is None:
+            raise ValueError("请先调用 setup() 方法设置模型和数据模块")
         return self.model
+
+    def get_model(self) -> nn.Module:
+        """获取模型实例"""
+        if self.model is None:
+            raise ValueError("请先调用 setup() 方法设置模型和数据模块")
+        return self.model.model
     
     def get_data_module(self) -> pl.LightningDataModule:
         """获取数据模块"""
+        if self.data_module is None:
+            raise ValueError("请先调用 setup() 方法设置模型和数据模块")
         return self.data_module
+
+    def get_dataloader(self, stage: Literal['train', 'val', 'test']) -> DataLoader:
+        """获取数据加载器"""
+        if self.data_module is None:
+            raise ValueError("请先调用 setup() 方法设置模型和数据模块")
+        
+        if stage == 'train':
+            return self.data_module.train_dataloader()
+        elif stage == 'val':
+            return self.data_module.val_dataloader()
+        elif stage == 'test':
+            return self.data_module.test_dataloader()
+        else:
+            raise ValueError(f"无效的数据加载器阶段: {stage}")
