@@ -118,7 +118,7 @@ def setup_data_interface(dataset_or_path, data_kwargs: Dict[str, Any] = None,
         dataset_class = _import_dataset_from_file(dataset_or_path)
     
     # 创建数据模块实例
-    config_dict = config.dict()
+    config_dict = config.dict() if config else {}
     config_dict['data_kwargs'] = data_kwargs  # 确保使用正确的 data_kwargs
     return DataInterface(
         dataset_class=dataset_class,
