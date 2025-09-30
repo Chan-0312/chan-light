@@ -41,15 +41,15 @@ class ModelInterface(pl.LightningModule):
     
     def training_step(self, batch, batch_idx):
         """训练步骤"""
-        return self.common_step(self.model, batch, self.log, self.hparams, stage='train')
+        return self.common_step(self, batch, stage='train')
     
     def validation_step(self, batch, batch_idx):
         """验证步骤"""
-        return self.common_step(self.model, batch, self.log, self.hparams, stage='val')
+        return self.common_step(self, batch, stage='val')
     
     def test_step(self, batch, batch_idx):
         """测试步骤"""
-        return self.common_step(self.model, batch, self.log, self.hparams, stage='test')
+        return self.common_step(self, batch, stage='test')
     
     def configure_optimizers(self):
         """配置优化器和学习率调度器"""
@@ -130,6 +130,108 @@ class ModelInterface(pl.LightningModule):
             "model_name": self.model.__class__.__name__ if self.model else "Unknown",
             "model_kwargs": self.hparams.model_kwargs
         }
+    
+    # ========== PyTorch Lightning 生命周期钩子 ==========
+    
+    def on_train_epoch_start(self):
+        """训练epoch开始时调用"""
+        if hasattr(self.common_step, 'on_train_epoch_start'):
+            self.common_step.on_train_epoch_start(self)
+    
+    def on_train_epoch_end(self):
+        """训练epoch结束时调用"""
+        if hasattr(self.common_step, 'on_train_epoch_end'):
+            self.common_step.on_train_epoch_end(self)
+    
+    def on_validation_epoch_start(self):
+        """验证epoch开始时调用"""
+        if hasattr(self.common_step, 'on_validation_epoch_start'):
+            self.common_step.on_validation_epoch_start(self)
+    
+    def on_validation_epoch_end(self):
+        """验证epoch结束时调用"""
+        if hasattr(self.common_step, 'on_validation_epoch_end'):
+            self.common_step.on_validation_epoch_end(self)
+    
+    def on_test_epoch_start(self):
+        """测试epoch开始时调用"""
+        if hasattr(self.common_step, 'on_test_epoch_start'):
+            self.common_step.on_test_epoch_start(self)
+    
+    def on_test_epoch_end(self):
+        """测试epoch结束时调用"""
+        if hasattr(self.common_step, 'on_test_epoch_end'):
+            self.common_step.on_test_epoch_end(self)
+    
+    def on_train_batch_start(self, batch, batch_idx):
+        """训练batch开始时调用"""
+        if hasattr(self.common_step, 'on_train_batch_start'):
+            return self.common_step.on_train_batch_start(self, batch, batch_idx)
+    
+    def on_train_batch_end(self, outputs, batch, batch_idx):
+        """训练batch结束时调用"""
+        if hasattr(self.common_step, 'on_train_batch_end'):
+            return self.common_step.on_train_batch_end(self, outputs, batch, batch_idx)
+    
+    def on_validation_batch_start(self, batch, batch_idx):
+        """验证batch开始时调用"""
+        if hasattr(self.common_step, 'on_validation_batch_start'):
+            return self.common_step.on_validation_batch_start(self, batch, batch_idx)
+    
+    def on_validation_batch_end(self, outputs, batch, batch_idx):
+        """验证batch结束时调用"""
+        if hasattr(self.common_step, 'on_validation_batch_end'):
+            return self.common_step.on_validation_batch_end(self, outputs, batch, batch_idx)
+    
+    def on_test_batch_start(self, batch, batch_idx):
+        """测试batch开始时调用"""
+        if hasattr(self.common_step, 'on_test_batch_start'):
+            return self.common_step.on_test_batch_start(self, batch, batch_idx)
+    
+    def on_test_batch_end(self, outputs, batch, batch_idx):
+        """测试batch结束时调用"""
+        if hasattr(self.common_step, 'on_test_batch_end'):
+            return self.common_step.on_test_batch_end(self, outputs, batch, batch_idx)
+    
+    def on_before_zero_grad(self, optimizer):
+        """梯度清零前调用"""
+        if hasattr(self.common_step, 'on_before_zero_grad'):
+            return self.common_step.on_before_zero_grad(self, optimizer)
+    
+    def on_after_backward(self):
+        """反向传播后调用"""
+        if hasattr(self.common_step, 'on_after_backward'):
+            return self.common_step.on_after_backward(self)
+    
+    def on_before_optimizer_step(self, optimizer):
+        """优化器步骤前调用"""
+        if hasattr(self.common_step, 'on_before_optimizer_step'):
+            return self.common_step.on_before_optimizer_step(self, optimizer)
+    
+    def on_after_optimizer_step(self, optimizer):
+        """优化器步骤后调用"""
+        if hasattr(self.common_step, 'on_after_optimizer_step'):
+            return self.common_step.on_after_optimizer_step(self, optimizer)
+    
+    def on_fit_start(self):
+        """训练开始时调用"""
+        if hasattr(self.common_step, 'on_fit_start'):
+            return self.common_step.on_fit_start(self)
+    
+    def on_fit_end(self):
+        """训练结束时调用"""
+        if hasattr(self.common_step, 'on_fit_end'):
+            return self.common_step.on_fit_end(self)
+    
+    def on_save_checkpoint(self, checkpoint):
+        """保存检查点时调用"""
+        if hasattr(self.common_step, 'on_save_checkpoint'):
+            return self.common_step.on_save_checkpoint(self, checkpoint)
+    
+    def on_load_checkpoint(self, checkpoint):
+        """加载检查点时调用"""
+        if hasattr(self.common_step, 'on_load_checkpoint'):
+            return self.common_step.on_load_checkpoint(self, checkpoint)
 
 
 
@@ -155,8 +257,11 @@ def setup_model_interface(model_or_path, model_kwargs: Dict[str, Any] = None,
     if isinstance(model_or_path, type) or callable(model_or_path):
         # 方式1：直接传入模型类
         model_class = model_or_path
+        # 允许省略 common_step：若类上定义了 common_step 则自动获取
+        if common_step is None and hasattr(model_class, 'common_step') and callable(getattr(model_class, 'common_step')):
+            common_step = getattr(model_class, 'common_step')
         if common_step is None:
-            raise ValueError("直接传入模型类时，必须同时提供 common_step 函数")
+            raise ValueError("直接传入模型类时，必须提供 common_step，或在模型类上定义静态方法 common_step(module, batch, stage='train')")
     else:
         # 方式2：字符串路径，从文件导入模型
         model_class, common_step = _import_model_from_file(model_or_path)
@@ -173,7 +278,7 @@ def setup_model_interface(model_or_path, model_kwargs: Dict[str, Any] = None,
     
     # 如果提供了检查点路径，加载检查点
     if ckpt_path:
-        checkpoint = torch.load(ckpt_path, map_location='cpu', weights_only=True)
+        checkpoint = torch.load(ckpt_path, map_location='cpu', weights_only=False)
         model_interface.load_state_dict(checkpoint['state_dict'])
         print(f"已从检查点加载模型: {ckpt_path}")
     
@@ -237,7 +342,7 @@ def _import_model_from_file(file_path) -> Tuple[Type, Callable]:
                         f"- 文件名：snake_case.py\n"
                         f"- 类名：{camel_name}")
     
-    # 查找 common_step 函数
+    # 新的 common_step 签名: @staticmethod def common_step(module: pl.LightningModule, batch, stage: str = 'train')
     if hasattr(model_class, 'common_step') and callable(model_class.common_step):
         common_step = model_class.common_step
     else:
@@ -254,6 +359,12 @@ def _import_model_from_file(file_path) -> Tuple[Type, Callable]:
                     break
     
     if not common_step:
-        raise ValueError(f"在文件 {file_path} 中未找到 common_step 函数")
+        raise ValueError(f"在文件 {file_path} 中未找到 common_step 函数。\n"
+                        f"请确保定义了 common_step 函数，签名如下：\n"
+                        f"@staticmethod\n"
+                        f"def common_step(module: pl.LightningModule, batch, stage: str = 'train'):\n"
+                        f"    # 提取数据\n"
+                        f"    inputs, labels = batch\n"
+                        f"    # 你的训练逻辑...")
     
     return model_class, common_step

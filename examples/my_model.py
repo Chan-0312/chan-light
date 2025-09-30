@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+import pytorch_lightning as pl
 
 
 class MyModel(nn.Module):
@@ -24,15 +25,36 @@ class MyModel(nn.Module):
         return x
 
     @staticmethod
-    def common_step(model, batch, log, hparams, stage='train'):
-        """训练步骤函数"""
+    def common_step(module: pl.LightningModule, batch, stage: str = 'train'):
+        """训练步骤函数（新的签名：接收 LightningModule 实例）"""
         inputs, labels = batch
-        outputs = model(inputs)
+        outputs = module.model(inputs)
         
         loss = F.binary_cross_entropy(outputs.squeeze(), labels.float())
         accuracy = ((outputs.squeeze() > 0.5).float() == labels.float()).float().mean()
         
-        log(f'{stage}_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
-        log(f'{stage}_acc', accuracy, on_step=False, on_epoch=True, prog_bar=True)
+        module.log(f'{stage}_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
+        module.log(f'{stage}_acc', accuracy, on_step=False, on_epoch=True, prog_bar=True)
         
         return loss
+
+
+# ========== 可选：定义并绑定生命周期钩子 ==========
+
+def on_fit_start(module: pl.LightningModule):
+    print("训练开始！")
+
+
+def on_train_epoch_start(module: pl.LightningModule):
+    print("训练epoch开始！")
+
+
+
+def on_train_epoch_end(module: pl.LightningModule):
+    print("训练epoch结束！")
+
+
+# 将钩子绑定到 common_step 上，供 ModelInterface 检测并调用
+MyModel.common_step.on_fit_start = on_fit_start
+MyModel.common_step.on_train_epoch_start = on_train_epoch_start
+MyModel.common_step.on_train_epoch_end = on_train_epoch_end

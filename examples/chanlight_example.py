@@ -1,7 +1,8 @@
 """
 ChanLight 使用示例 - 展示两种使用方式：文件路径和直接导入类
 """
-
+import sys
+sys.path.append('./')
 from chanlight import TrainerConfig, TrainingManager
 
 
