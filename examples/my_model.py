@@ -25,8 +25,8 @@ class MyModel(nn.Module):
         return x
 
     @staticmethod
-    def common_step(module: pl.LightningModule, batch, stage: str = 'train'):
-        """训练步骤函数（新的签名：接收 LightningModule 实例）"""
+    def common_step(module: pl.LightningModule, batch, stage: str):
+        """训练步骤函数（新的签名：接收 LightningModule 实例和阶段）"""
         inputs, labels = batch
         outputs = module.model(inputs)
         
@@ -45,16 +45,27 @@ def on_fit_start(module: pl.LightningModule):
     print("训练开始！")
 
 
-def on_train_epoch_start(module: pl.LightningModule):
-    print("训练epoch开始！")
+def on_epoch_start(module: pl.LightningModule, stage: str):
+    print(f"{stage} epoch开始！")
 
 
+def on_epoch_end(module: pl.LightningModule, stage: str):
+    print(f"{stage} epoch结束！")
 
-def on_train_epoch_end(module: pl.LightningModule):
-    print("训练epoch结束！")
+
+def on_batch_start(module: pl.LightningModule, batch, batch_idx, stage: str):
+    if batch_idx % 100 == 0:  # 每100个batch打印一次
+        print(f"{stage} batch {batch_idx} 开始")
+
+
+def on_batch_end(module: pl.LightningModule, outputs, batch, batch_idx, stage: str):
+    if batch_idx % 100 == 0:  # 每100个batch打印一次
+        print(f"{stage} batch {batch_idx} 结束")
 
 
 # 将钩子绑定到 common_step 上，供 ModelInterface 检测并调用
 MyModel.common_step.on_fit_start = on_fit_start
-MyModel.common_step.on_train_epoch_start = on_train_epoch_start
-MyModel.common_step.on_train_epoch_end = on_train_epoch_end
+MyModel.common_step.on_epoch_start = on_epoch_start
+MyModel.common_step.on_epoch_end = on_epoch_end
+MyModel.common_step.on_batch_start = on_batch_start
+MyModel.common_step.on_batch_end = on_batch_end

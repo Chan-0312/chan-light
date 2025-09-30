@@ -5,7 +5,7 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-from typing import Callable, Optional, Any, Dict, Tuple, Type
+from typing import Callable, Optional, Any, Dict, Tuple, Type, Literal
 from pathlib import Path
 import importlib.util
 import sys
@@ -133,106 +133,63 @@ class ModelInterface(pl.LightningModule):
     
     # ========== PyTorch Lightning 生命周期钩子 ==========
     
+    def _call_hook(self, hook_name, *args, stage=None, **kwargs):
+        """通用钩子调用方法"""
+        if hasattr(self.common_step, hook_name):
+            hook_func = getattr(self.common_step, hook_name)
+            if stage:
+                return hook_func(self, *args, stage=stage, **kwargs)
+            else:
+                return hook_func(self, *args, **kwargs)
+    
     def on_train_epoch_start(self):
         """训练epoch开始时调用"""
-        if hasattr(self.common_step, 'on_train_epoch_start'):
-            self.common_step.on_train_epoch_start(self)
+        self._call_hook('on_epoch_start', stage='train')
     
     def on_train_epoch_end(self):
         """训练epoch结束时调用"""
-        if hasattr(self.common_step, 'on_train_epoch_end'):
-            self.common_step.on_train_epoch_end(self)
+        self._call_hook('on_epoch_end', stage='train')
     
     def on_validation_epoch_start(self):
         """验证epoch开始时调用"""
-        if hasattr(self.common_step, 'on_validation_epoch_start'):
-            self.common_step.on_validation_epoch_start(self)
+        self._call_hook('on_epoch_start', stage='val')
     
     def on_validation_epoch_end(self):
         """验证epoch结束时调用"""
-        if hasattr(self.common_step, 'on_validation_epoch_end'):
-            self.common_step.on_validation_epoch_end(self)
+        self._call_hook('on_epoch_end', stage='val')
     
     def on_test_epoch_start(self):
         """测试epoch开始时调用"""
-        if hasattr(self.common_step, 'on_test_epoch_start'):
-            self.common_step.on_test_epoch_start(self)
+        self._call_hook('on_epoch_start', stage='test')
     
     def on_test_epoch_end(self):
         """测试epoch结束时调用"""
-        if hasattr(self.common_step, 'on_test_epoch_end'):
-            self.common_step.on_test_epoch_end(self)
+        self._call_hook('on_epoch_end', stage='test')
     
     def on_train_batch_start(self, batch, batch_idx):
         """训练batch开始时调用"""
-        if hasattr(self.common_step, 'on_train_batch_start'):
-            return self.common_step.on_train_batch_start(self, batch, batch_idx)
+        return self._call_hook('on_batch_start', batch, batch_idx, stage='train')
     
     def on_train_batch_end(self, outputs, batch, batch_idx):
         """训练batch结束时调用"""
-        if hasattr(self.common_step, 'on_train_batch_end'):
-            return self.common_step.on_train_batch_end(self, outputs, batch, batch_idx)
+        return self._call_hook('on_batch_end', outputs, batch, batch_idx, stage='train')
     
     def on_validation_batch_start(self, batch, batch_idx):
         """验证batch开始时调用"""
-        if hasattr(self.common_step, 'on_validation_batch_start'):
-            return self.common_step.on_validation_batch_start(self, batch, batch_idx)
+        return self._call_hook('on_batch_start', batch, batch_idx, stage='val')
     
     def on_validation_batch_end(self, outputs, batch, batch_idx):
         """验证batch结束时调用"""
-        if hasattr(self.common_step, 'on_validation_batch_end'):
-            return self.common_step.on_validation_batch_end(self, outputs, batch, batch_idx)
+        return self._call_hook('on_batch_end', outputs, batch, batch_idx, stage='val')
     
     def on_test_batch_start(self, batch, batch_idx):
         """测试batch开始时调用"""
-        if hasattr(self.common_step, 'on_test_batch_start'):
-            return self.common_step.on_test_batch_start(self, batch, batch_idx)
+        return self._call_hook('on_batch_start', batch, batch_idx, stage='test')
     
     def on_test_batch_end(self, outputs, batch, batch_idx):
         """测试batch结束时调用"""
-        if hasattr(self.common_step, 'on_test_batch_end'):
-            return self.common_step.on_test_batch_end(self, outputs, batch, batch_idx)
+        return self._call_hook('on_batch_end', outputs, batch, batch_idx, stage='test')
     
-    def on_before_zero_grad(self, optimizer):
-        """梯度清零前调用"""
-        if hasattr(self.common_step, 'on_before_zero_grad'):
-            return self.common_step.on_before_zero_grad(self, optimizer)
-    
-    def on_after_backward(self):
-        """反向传播后调用"""
-        if hasattr(self.common_step, 'on_after_backward'):
-            return self.common_step.on_after_backward(self)
-    
-    def on_before_optimizer_step(self, optimizer):
-        """优化器步骤前调用"""
-        if hasattr(self.common_step, 'on_before_optimizer_step'):
-            return self.common_step.on_before_optimizer_step(self, optimizer)
-    
-    def on_after_optimizer_step(self, optimizer):
-        """优化器步骤后调用"""
-        if hasattr(self.common_step, 'on_after_optimizer_step'):
-            return self.common_step.on_after_optimizer_step(self, optimizer)
-    
-    def on_fit_start(self):
-        """训练开始时调用"""
-        if hasattr(self.common_step, 'on_fit_start'):
-            return self.common_step.on_fit_start(self)
-    
-    def on_fit_end(self):
-        """训练结束时调用"""
-        if hasattr(self.common_step, 'on_fit_end'):
-            return self.common_step.on_fit_end(self)
-    
-    def on_save_checkpoint(self, checkpoint):
-        """保存检查点时调用"""
-        if hasattr(self.common_step, 'on_save_checkpoint'):
-            return self.common_step.on_save_checkpoint(self, checkpoint)
-    
-    def on_load_checkpoint(self, checkpoint):
-        """加载检查点时调用"""
-        if hasattr(self.common_step, 'on_load_checkpoint'):
-            return self.common_step.on_load_checkpoint(self, checkpoint)
-
 
 
 def setup_model_interface(model_or_path, model_kwargs: Dict[str, Any] = None, 
@@ -261,7 +218,7 @@ def setup_model_interface(model_or_path, model_kwargs: Dict[str, Any] = None,
         if common_step is None and hasattr(model_class, 'common_step') and callable(getattr(model_class, 'common_step')):
             common_step = getattr(model_class, 'common_step')
         if common_step is None:
-            raise ValueError("直接传入模型类时，必须提供 common_step，或在模型类上定义静态方法 common_step(module, batch, stage='train')")
+            raise ValueError("直接传入模型类时，必须提供 common_step，或在模型类上定义静态方法 common_step(module, batch, stage)")
     else:
         # 方式2：字符串路径，从文件导入模型
         model_class, common_step = _import_model_from_file(model_or_path)
@@ -362,7 +319,8 @@ def _import_model_from_file(file_path) -> Tuple[Type, Callable]:
         raise ValueError(f"在文件 {file_path} 中未找到 common_step 函数。\n"
                         f"请确保定义了 common_step 函数，签名如下：\n"
                         f"@staticmethod\n"
-                        f"def common_step(module: pl.LightningModule, batch, stage: str = 'train'):\n"
+                        f"def common_step(module: pl.LightningModule, batch, stage: str):\n"
+                        f"    # stage 参数值为 'train', 'val', 'test'\n"
                         f"    # 提取数据\n"
                         f"    inputs, labels = batch\n"
                         f"    # 你的训练逻辑...")
